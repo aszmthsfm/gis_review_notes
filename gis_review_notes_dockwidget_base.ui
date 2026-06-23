@@ -6,58 +6,179 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>678</width>
-    <height>601</height>
+    <width>720</width>
+    <height>540</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>GIS Review Notes</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QVBoxLayout" name="verticalLayout">
+   <layout class="QVBoxLayout" name="verticalLayout_main">
+    <property name="spacing"><number>0</number></property>
+    <property name="margin"><number>0</number></property>
+
+    <!-- ===== 顶部工具区 ===== -->
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QPushButton" name="btnRefresh">
-        <property name="text">
-         <string>刷新</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="tableNote">
-        <property name="text">
-         <string>启动按钮</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="cmbStatus"/>
-      </item>
-      <item>
-       <widget class="QComboBox" name="cmbPriority">
-        <property name="currentText">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <widget class="QFrame" name="frame_topBar">
+      <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+      <property name="maximumSize"><size><width>16777215</width><height>72</height></size></property>
+      <layout class="QVBoxLayout" name="verticalLayout_topBar">
+       <property name="spacing"><number>4</number></property>
+       <property name="margin"><number>6</number></property>
+
+       <!-- 第一行: 图层 + 状态筛选 -->
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_row1">
+         <item><widget class="QLabel" name="label_layerTitle"><property name="text"><string>图层:</string></property></widget></item>
+         <item><widget class="QComboBox" name="comboBox_layer"/></item>
+         <item><spacer name="horizontalSpacer_row1"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+         <item><widget class="QLabel" name="label_filterTitle"><property name="text"><string>筛选:</string></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_filterAll"><property name="text"><string>全部</string></property><property name="checkable"><bool>true</bool></property><property name="checked"><bool>true</bool></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_filterPending"><property name="text"><string>待处理</string></property><property name="checkable"><bool>true</bool></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_filterInProgress"><property name="text"><string>处理中</string></property><property name="checkable"><bool>true</bool></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_filterResolved"><property name="text"><string>已完成</string></property><property name="checkable"><bool>true</bool></property></widget></item>
+        </layout>
+       </item>
+
+       <!-- 第二行: 优先级 + 仅选中 + 刷新 -->
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_row2">
+         <item><widget class="QLabel" name="label_priorityTitle"><property name="text"><string>优先级:</string></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_priCritical"><property name="text"><string>紧急</string></property><property name="checkable"><bool>true</bool></property><property name="checked"><bool>true</bool></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_priHigh"><property name="text"><string>高</string></property><property name="checkable"><bool>true</bool></property><property name="checked"><bool>true</bool></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_priMedium"><property name="text"><string>中</string></property><property name="checkable"><bool>true</bool></property><property name="checked"><bool>true</bool></property></widget></item>
+         <item><widget class="QToolButton" name="toolButton_priLow"><property name="text"><string>低</string></property><property name="checkable"><bool>true</bool></property><property name="checked"><bool>true</bool></property></widget></item>
+         <item><spacer name="horizontalSpacer_row2"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+         <item><widget class="QCheckBox" name="checkBox_selectedOnly"><property name="text"><string>仅显示选中要素</string></property></widget></item>
+         <item><widget class="QPushButton" name="pushButton_refresh"><property name="text"><string>刷新</string></property><property name="maximumSize"><size><width>60</width><height>16777215</height></size></property></widget></item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
     </item>
+
+    <!-- ===== 中部主体区 ===== -->
     <item>
-     <widget class="QTableWidget" name="tableWidget"/>
+     <widget class="QSplitter" name="splitter_body">
+      <property name="orientation"><enum>Qt::Horizontal</enum></property>
+      <property name="childrenCollapsible"><bool>false</bool></property>
+      <property name="handleWidth"><number>4</number></property>
+
+      <!-- 左侧: 批注列表 -->
+      <widget class="QFrame" name="frame_listPanel">
+       <property name="minimumSize"><size><width>320</width><height>0</height></size></property>
+       <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+       <layout class="QVBoxLayout" name="verticalLayout_list">
+        <property name="spacing"><number>4</number></property>
+        <property name="margin"><number>4</number></property>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_listHeader">
+          <item><widget class="QLabel" name="label_listTitle"><property name="text"><string>批注列表</string></property><property name="font"><font><weight>75</weight><bold>true</bold></font></property></widget></item>
+          <item><spacer name="horizontalSpacer_listHeader"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+          <item><widget class="QLabel" name="label_count"><property name="text"><string>共 0 条</string></property></widget></item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTableView" name="tableView_notes">
+          <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+          <property name="selectionMode"><enum>QAbstractItemView::SingleSelection</enum></property>
+          <property name="alternatingRowColors"><bool>true</bool></property>
+          <property name="sortingEnabled"><bool>true</bool></property>
+          <attribute name="horizontalHeaderStretchLastSection"><bool>true</bool></attribute>
+          <attribute name="verticalHeaderVisible"><bool>false</bool></attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_stats">
+          <property name="text"><string>待处理 0 | 处理中 0 | 已完成 0</string></property>
+          <property name="alignment"><set>Qt::AlignCenter</set></property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- 右侧: 批注详情 -->
+      <widget class="QFrame" name="frame_detailPanel">
+       <property name="minimumSize"><size><width>300</width><height>0</height></size></property>
+       <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+       <layout class="QVBoxLayout" name="verticalLayout_detail">
+        <property name="spacing"><number>4</number></property>
+        <property name="margin"><number>6</number></property>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_detailHeader">
+          <item><widget class="QLabel" name="label_detailTitle"><property name="text"><string>批注详情</string></property><property name="font"><font><weight>75</weight><bold>true</bold></font></property></widget></item>
+          <item><spacer name="horizontalSpacer_detail"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+          <item><widget class="QLabel" name="label_detailId"><property name="text"><string>#--</string></property></widget></item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget_meta">
+          <layout class="QFormLayout" name="formLayout_meta">
+           <property name="fieldGrowthPolicy"><enum>QFormLayout::AllNonFixedFieldsGrow</enum></property>
+           <item row="0" column="0"><widget class="QLabel" name="label_meta_layer"><property name="text"><string>图层:</string></property></widget></item>
+           <item row="0" column="1"><widget class="QLabel" name="label_detailLayer"><property name="text"><string>--</string></property></widget></item>
+           <item row="1" column="0"><widget class="QLabel" name="label_meta_featureId"><property name="text"><string>要素ID:</string></property></widget></item>
+           <item row="1" column="1"><widget class="QLabel" name="label_detailFeatureId"><property name="text"><string>--</string></property></widget></item>
+           <item row="2" column="0"><widget class="QLabel" name="label_meta_priority"><property name="text"><string>优先级:</string></property></widget></item>
+           <item row="2" column="1"><widget class="QLabel" name="label_detailPriority"><property name="text"><string>--</string></property></widget></item>
+           <item row="3" column="0"><widget class="QLabel" name="label_meta_status"><property name="text"><string>状态:</string></property></widget></item>
+           <item row="3" column="1"><widget class="QLabel" name="label_detailStatus"><property name="text"><string>--</string></property></widget></item>
+           <item row="4" column="0"><widget class="QLabel" name="label_meta_author"><property name="text"><string>作者:</string></property></widget></item>
+           <item row="4" column="1"><widget class="QLabel" name="label_detailAuthor"><property name="text"><string>--</string></property></widget></item>
+           <item row="5" column="0"><widget class="QLabel" name="label_meta_tags"><property name="text"><string>标签:</string></property></widget></item>
+           <item row="5" column="1"><widget class="QLabel" name="label_detailTags"><property name="text"><string>--</string></property></widget></item>
+           <item row="6" column="0"><widget class="QLabel" name="label_meta_created"><property name="text"><string>创建时间:</string></property></widget></item>
+           <item row="6" column="1"><widget class="QLabel" name="label_detailCreated"><property name="text"><string>--</string></property></widget></item>
+           <item row="7" column="0"><widget class="QLabel" name="label_meta_updated"><property name="text"><string>更新时间:</string></property></widget></item>
+           <item row="7" column="1"><widget class="QLabel" name="label_detailUpdated"><property name="text"><string>--</string></property></widget></item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_contentTitle"><property name="text"><string>审查意见:</string></property></widget>
+        </item>
+        <item>
+         <widget class="QPlainTextEdit" name="plainTextEdit_noteContent">
+          <property name="readOnly"><bool>true</bool></property>
+          <property name="placeholderText"><string>选择左侧批注查看详情...</string></property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer_detail"><property name="orientation"><enum>Qt::Vertical</enum></property></spacer>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_detailActions">
+          <item><spacer name="horizontalSpacer_detailActions"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+          <item><widget class="QPushButton" name="pushButton_editNote"><property name="text"><string>编辑</string></property></widget></item>
+          <item><widget class="QPushButton" name="pushButton_copyNote"><property name="text"><string>复制</string></property></widget></item>
+          <item><widget class="QPushButton" name="pushButton_noteHistory"><property name="text"><string>历史</string></property></widget></item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </widget>
     </item>
+
+    <!-- ===== 底部操作栏 ===== -->
     <item>
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>Replace this QLabel
-with the desired
-plugin content.</string>
-      </property>
+     <widget class="QFrame" name="frame_bottomBar">
+      <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+      <property name="maximumSize"><size><width>16777215</width><height>48</height></size></property>
+      <layout class="QHBoxLayout" name="horizontalLayout_bottomBar">
+       <property name="spacing"><number>8</number></property>
+       <property name="margin"><number>6</number></property>
+       <item><spacer name="horizontalSpacer_bottomLeft"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+       <item><widget class="QPushButton" name="pushButton_addNote"><property name="text"><string>  添加批注  </string></property></widget></item>
+       <item><widget class="QPushButton" name="pushButton_deleteNote"><property name="text"><string>  删除批注  </string></property></widget></item>
+       <item><widget class="QPushButton" name="pushButton_locateFeature"><property name="text"><string>  定位要素  </string></property></widget></item>
+       <item><widget class="QPushButton" name="pushButton_markResolved"><property name="text"><string>  标记完成  </string></property></widget></item>
+       <item><widget class="QPushButton" name="pushButton_exportReport"><property name="text"><string>  导出报告  </string></property></widget></item>
+       <item><spacer name="horizontalSpacer_bottomRight"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
+      </layout>
      </widget>
     </item>
    </layout>
   </widget>
  </widget>
- <resources/>
- <connections/>
 </ui>
