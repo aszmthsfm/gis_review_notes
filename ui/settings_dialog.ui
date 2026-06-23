@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsDialogBase</class>
+ <widget class="QDialog" name="SettingsDialogBase">
+  <property name="windowTitle"><string>设置</string></property>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
