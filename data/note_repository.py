@@ -13,12 +13,15 @@ from ..utils.logger import log_info, log_error
 class NoteRepository:
     """审查批注的增删改查"""
 
-    def __init__(self, conn_manager: ConnectionManager):
-        self._conn_manager = conn_manager
+    def __init__(self, db_manager):
+        """传入数据库管理器，而不是直接传连接"""
+        self._db_manager = db_manager
 
     @property
     def _conn(self):
-        return self._conn_manager.get_connection()
+        """动态获取最新连接，防止拿到旧的 None"""
+        # 注意：这里的 .conn 或 .get_connection() 需要替换为你实际管理器中提供连接的方法或属性
+        return self._db_manager.conn
 
     def insert(self, note: ReviewNote) -> int:
         """插入一条批注，返回新 fid"""
