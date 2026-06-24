@@ -164,7 +164,7 @@ class NoteRepository:
         return result
 
     def search(self, project_hash: str, status: str = "all",
-               priorities: list = None, layer_id: str = "") -> List[ReviewNote]:
+               priorities: list = None, layer_name: str = "") -> List[ReviewNote]:
         """多条件筛选查询"""
         sql = f"""
             SELECT {Constants.F_FID}, {Constants.F_PROJECT_HASH},
@@ -190,9 +190,9 @@ class NoteRepository:
             sql += f" AND {Constants.F_PRIORITY} IN ({placeholders})"
             params.extend(priorities)
 
-        if layer_id:
+        if layer_name:
             sql += f" AND {Constants.F_LAYER_ID} = ?"
-            params.append(layer_id)
+            params.append(layer_name)
 
         sql += f" ORDER BY {Constants.F_CREATED_AT} DESC"
 

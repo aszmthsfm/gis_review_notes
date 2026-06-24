@@ -40,7 +40,6 @@ class ReviewController(QObject):
         """连接 DockWidget 的所有信号"""
         # 底部操作栏
         self.dock.add_note_requested.connect(self._on_add_note)
-        self.dock.add_note_for_selected_requested.connect(self._on_add_note_for_selected)
         self.dock.delete_note_requested.connect(self._on_delete_note)
         self.dock.locate_feature_requested.connect(self._on_locate_feature)
         self.dock.mark_resolved_requested.connect(self._on_mark_resolved)
@@ -110,51 +109,6 @@ class ReviewController(QObject):
             dialog.set_multiple_features_info(len(selected_features))
 
         # 4. 执行批量添加操作
-        if dialog.exec_() == dialog.Accepted:
-            values = dialog.get_values()
-            if not values["note_text"]:
-                self.dock.show_message("审查意见不能为空", "warning")
-                return
-
-            added_count = 0
-            for layer, feature in selected_features:
-                note = self.note_service.add_note(
-                    layer=layer,
-                    feature=feature,
-                    text=values["note_text"],
-                    priority=values["priority"],
-                    author=values["author"],
-                    tags=values["tags"],
-                )
-                if values["status"] != ReviewStatus.OPEN:
-                    self.note_service.change_status(note.fid, values["status"])
-                added_count += 1
-
-            self.dock.show_message(f"已成功为 {added_count} 个要素添加批注", "success")
-            self._refresh_all()
-
-    def _on_add_note_for_selected(self):
-        """为地图上当前选中的所有要素批量添加批注"""
-        selected_features = self.selection_service.get_selected_features()
-
-        if not selected_features:
-            self.dock.show_message("请先在地图上选择至少一个要素", "warning")
-            return
-
-        for layer, feature in selected_features:
-            if not isinstance(layer, QgsVectorLayer):
-                self.dock.show_message("请确保选中的都是矢量图层要素", "warning")
-                return
-
-        dialog = NoteEditDialog(parent=self.dock)
-
-        # 如果你已经在 ui/note_edit_dialog.py 中添加了 set_multiple_features_info 方法
-        if len(selected_features) == 1:
-            layer, feature = selected_features[0]
-            dialog.set_feature_info(layer.name(), feature.id())
-        else:
-            dialog.set_multiple_features_info(len(selected_features))
-
         if dialog.exec_() == dialog.Accepted:
             values = dialog.get_values()
             if not values["note_text"]:

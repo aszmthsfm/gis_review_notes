@@ -56,7 +56,7 @@ class GisReviewNotes:
 
         # 将数据库路径注入到连接管理器中，确保后续获取连接时路径存在
         self.conn_manager.switch_gpkg(gpkg_path)
-        
+
         # 初始化数据仓库
         self.note_repo = NoteRepository(self.conn_manager)
         self.project_meta_repo = ProjectMetaRepository(self.conn_manager)
