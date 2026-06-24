@@ -55,7 +55,7 @@ class GisReviewNotes:
         self.gpkg_manager.init_or_migrate()
 
         # 初始化数据仓库
-        self.note_repo = NoteRepository(self.db_manager)
+        self.note_repo = NoteRepository(self.conn_manager)
         self.project_meta_repo = ProjectMetaRepository(self.conn_manager)
 
         # 初始化业务服务

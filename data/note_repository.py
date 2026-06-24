@@ -20,8 +20,7 @@ class NoteRepository:
     @property
     def _conn(self):
         """动态获取最新连接，防止拿到旧的 None"""
-        # 注意：这里的 .conn 或 .get_connection() 需要替换为你实际管理器中提供连接的方法或属性
-        return self._db_manager.conn
+        return self._db_manager.get_connection()
 
     def insert(self, note: ReviewNote) -> int:
         """插入一条批注，返回新 fid"""
