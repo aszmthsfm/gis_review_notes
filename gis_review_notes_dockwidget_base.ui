@@ -170,6 +170,11 @@
        <property name="margin"><number>6</number></property>
        <item><spacer name="horizontalSpacer_bottomLeft"><property name="orientation"><enum>Qt::Horizontal</enum></property></spacer></item>
        <item><widget class="QPushButton" name="pushButton_addNote"><property name="text"><string>  添加批注  </string></property></widget></item>
+       <item>
+        <widget class="QPushButton" name="pushButton_addNoteForSelected">
+         <property name="text"><string>  为选中要素添加  </string></property>
+        </widget>
+       </item>
        <item><widget class="QPushButton" name="pushButton_deleteNote"><property name="text"><string>  删除批注  </string></property></widget></item>
        <item><widget class="QPushButton" name="pushButton_locateFeature"><property name="text"><string>  定位要素  </string></property></widget></item>
        <item><widget class="QPushButton" name="pushButton_markResolved"><property name="text"><string>  标记完成  </string></property></widget></item>

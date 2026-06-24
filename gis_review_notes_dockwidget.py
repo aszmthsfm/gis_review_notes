@@ -29,6 +29,7 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     """GIS Review Notes 主界面 DockWidget"""
 
     closingPlugin = pyqtSignal()
+    add_note_for_selected_requested = pyqtSignal()
 
     # ═══════════════════════════════════════════════════
     #  信号定义 — 供 Controller 连接
@@ -115,6 +116,7 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def _connect_signals(self):
         """连接所有 UI 信号"""
         self.pushButton_addNote.clicked.connect(lambda: self.add_note_requested.emit())
+        self.pushButton_addNoteForSelected.clicked.connect(lambda: self.add_note_for_selected_requested.emit())
         self.pushButton_deleteNote.clicked.connect(self._on_delete_note)
         self.pushButton_locateFeature.clicked.connect(self._on_locate_feature)
         self.pushButton_markResolved.clicked.connect(self._on_mark_resolved)

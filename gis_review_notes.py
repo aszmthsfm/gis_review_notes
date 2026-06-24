@@ -46,7 +46,7 @@ class GisReviewNotes:
         gpkg_path = self.config_service.get_gpkg_path()
         if not gpkg_path:
             # 使用用户数据目录作为默认路径
-            user_data_dir = Path(QgsApplication.userProfilePath()) 
+            user_data_dir = Path(QgsApplication.qgisSettingsDirPath())
             gpkg_path = str(user_data_dir / "gis_review_notes.gpkg")
             self.config_service.set_gpkg_path(gpkg_path)
 
@@ -109,6 +109,13 @@ class GisReviewNotes:
             callback=self.run,
             parent=self.iface.mainWindow()
         )
+        #独立快捷按钮（对选中要素添加批注）
+        self.add_action(
+            icon_path,  # 若有其他单独设计的图标，可替换此处路径
+            text=self.tr(u'为选中要素添加批注'),
+            callback=self._add_note_to_selection,
+            parent=self.iface.mainWindow()
+        )
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
@@ -132,7 +139,7 @@ class GisReviewNotes:
             self.dockwidget = GisReviewNotesDockWidget()
 
             # 设置控制器（在run()中设置，确保DockWidget已创建）
-            self.review_controller.dock = self.dockwidget
+            self.review_controller.set_dock_widget(self.dockwidget)
 
             # 连接关闭信号
             self.dockwidget.closingPlugin.connect(self.onClosePlugin)
@@ -146,3 +153,11 @@ class GisReviewNotes:
 
             # 启用地图工具
             self.map_controller.enable_identify_tool()
+
+    def _add_note_to_selection(self):
+        """主工具栏独立按钮的回调函数"""
+        if not self.pluginIsActive:
+            self.run()  # 如果侧边栏未打开，先初始化并打开面板
+
+        # 直接调用控制器中改造后的添加逻辑
+        self.review_controller._on_add_note()

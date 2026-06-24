@@ -91,6 +91,10 @@ class NoteEditDialog(QDialog):
         """设置要素信息（添加模式）"""
         self.label_info.setText(f"要素信息: {layer_name} / FID:{feature_id}")
 
+    def set_multiple_features_info(self, count: int):
+        """设置要素信息（多选模式）"""
+        self.label_info.setText(f"要素信息: 已选中 {count} 个要素")
+
     def get_values(self) -> dict:
         """获取对话框中的值"""
         return {
