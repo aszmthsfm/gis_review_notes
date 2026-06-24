@@ -9,7 +9,7 @@ from qgis.core import (
     QgsWkbTypes, QgsSymbol, QgsSingleSymbolRenderer,
     QgsCategorizedSymbolRenderer, QgsRendererCategory,
     QgsLineSymbol, QgsFillSymbol, QgsTextFormat,
-    QgsMapLayer 
+    QgsMapLayer
 )
 from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QVariant, Qt
@@ -40,16 +40,15 @@ class RenderService:
 
         # 创建新的内存图层
         uri = "Point?crs=EPSG:4326&field=fid:integer&field=note_fid:integer&field=status:string&field=priority:integer&field=note_text:string"
-        self._overlay_layer = QgsVectorLayer(uri, Constants.OVERLAY_LAYER_NAME, "memory")
-        self._overlay_layer.setFlags(QgsVectorLayer.Searchable | QgsVectorLayer.Identifiable)
+        #设置图层为私有，并且免除内存图层保存提示
+        self._overlay_layer.setFlags(QgsMapLayer.Private | QgsMapLayer.Identifiable)
+        self._overlay_layer.setCustomProperty("skipMemorySave", 1)
 
         # 设置样式
         self._apply_symbology(self._overlay_layer)
 
         # 添加到项目（插入到最底层，不干扰数据图层）
         project.addMapLayer(self._overlay_layer, False)
-        root = project.layerTreeRoot()
-        root.insertLayer(len(root.children()), self._overlay_layer)
 
         log_info("已创建标注覆盖图层")
         return self._overlay_layer
@@ -94,6 +93,10 @@ class RenderService:
         if self._overlay_layer:
             project.removeMapLayer(self._overlay_layer.id())
             self._overlay_layer = None
+
+    def cleanup(self) -> None:
+        """在 QGIS 关闭或卸载插件时被调用，确保内存图层被销毁"""
+        self.clear_overlay()
 
     def zoom_to_note(self, note: ReviewNote) -> None:
         """缩放到指定批注的位置"""

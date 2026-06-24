@@ -82,7 +82,12 @@ class ReviewController(QObject):
 
     def cleanup(self):
         """清理资源"""
-        pass
+        try:
+            if self.render_service:
+                self.render_service.cleanup()
+            log_info("ReviewController 资源清理完成")
+        except Exception as e:
+            log_error(f"清理渲染服务失败: {e}")
 
     # ═══════════════════════════════════════
     #  底部操作栏处理

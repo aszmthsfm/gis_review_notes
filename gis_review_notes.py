@@ -128,6 +128,9 @@ class GisReviewNotes:
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
+        # 卸载插件或关闭 QGIS 时，触发控制器清理内存图层
+        if hasattr(self, 'review_controller') and self.review_controller:
+            self.review_controller.cleanup()
         for action in self.actions:
             self.iface.removePluginMenu(self.tr(u'&GIS Review Notes'), action)
             self.iface.removeToolBarIcon(action)
