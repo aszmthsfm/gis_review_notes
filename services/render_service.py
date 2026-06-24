@@ -8,7 +8,8 @@ from qgis.core import (
     QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields,
     QgsWkbTypes, QgsSymbol, QgsSingleSymbolRenderer,
     QgsCategorizedSymbolRenderer, QgsRendererCategory,
-    QgsLineSymbol, QgsFillSymbol, QgsTextFormat
+    QgsLineSymbol, QgsFillSymbol, QgsTextFormat,
+    QgsMapLayer 
 )
 from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QVariant, Qt

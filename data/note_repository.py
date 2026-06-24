@@ -164,7 +164,7 @@ class NoteRepository:
         return result
 
     def search(self, project_hash: str, status: str = "all",
-               priorities: list = None, layer_name: str = "") -> List[ReviewNote]:
+               priorities: list = None, layer_id: str = "") -> List[ReviewNote]:
         """多条件筛选查询"""
         sql = f"""
             SELECT {Constants.F_FID}, {Constants.F_PROJECT_HASH},
@@ -190,9 +190,22 @@ class NoteRepository:
             sql += f" AND {Constants.F_PRIORITY} IN ({placeholders})"
             params.extend(priorities)
 
-        if layer_name:
-            sql += f" AND {Constants.F_LAYER_ID} = ?"
-            params.append(layer_name)
+            # ---------- 替换图层过滤代码为以下内容 ----------
+            if layer_id and str(layer_id).strip() != "all":
+                actual_layer_name = layer_id
+
+                # 尝试通过 QGIS 的 API 将乱码一样的 layer_id 翻译成直观的图层名称（例如"综合图层"）
+                try:
+                    from qgis.core import QgsProject
+                    layer = QgsProject.instance().mapLayer(layer_id)
+                    if layer:
+                        actual_layer_name = layer.name()
+                except Exception:
+                    pass
+
+                # 双重保险匹配：无论数据库里存的是底层 ID 还是 文本名称，只要对上一个就算命中！
+                sql += f" AND ({Constants.F_LAYER_ID} = ? OR {Constants.F_LAYER_NAME} = ?)"
+                params.extend([layer_id, actual_layer_name])
 
         sql += f" ORDER BY {Constants.F_CREATED_AT} DESC"
 

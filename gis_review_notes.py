@@ -155,7 +155,7 @@ class GisReviewNotes:
             self.review_controller.initialize()
 
             # 启用地图工具
-            self.map_controller.enable_identify_tool()
+            #self.map_controller.enable_identify_tool()
 
     def _add_note_to_selection(self):
         """主工具栏独立按钮的回调函数"""

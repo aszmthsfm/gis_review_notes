@@ -6,6 +6,7 @@ import os
 from qgis.PyQt.QtCore import QObject, pyqtSignal
 from qgis.PyQt.QtWidgets import QMessageBox, QFileDialog
 from qgis.core import QgsProject, QgsVectorLayer, Qgis
+from qgis.PyQt.QtWidgets import QAbstractItemView
 
 from ..core.enums import ReviewStatus, NotePriority
 from ..core.models import ReviewNote
@@ -34,7 +35,10 @@ class ReviewController(QObject):
     def set_dock_widget(self, dock_widget):
         """后期注入 DockWidget 并连接信号"""
         self.dock = dock_widget
+        self.dock.tableView_notes.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.dock.tableView_notes.setSelectionBehavior(QAbstractItemView.SelectRows)
         self._connect_dock_signals()
+
 
     def _connect_dock_signals(self):
         """连接 DockWidget 的所有信号"""
