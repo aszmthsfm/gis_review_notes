@@ -8,12 +8,14 @@ from qgis.core import (
     QgsPointXY, QgsCoordinateReferenceSystem, QgsField, QgsFields,
     QgsWkbTypes, QgsSymbol, QgsSingleSymbolRenderer,
     QgsCategorizedSymbolRenderer, QgsRendererCategory,
-    QgsLineSymbol, QgsFillSymbol, QgsTextFormat,
-    QgsMapLayer, QgsCoordinateTransform
+    QgsLineSymbol, QgsFillSymbol, QgsMapLayer, QgsCoordinateTransform,
+    # 标注引擎所需的依赖
+    QgsPalLayerSettings, QgsVectorLayerSimpleLabeling,
+    QgsTextFormat, QgsTextBufferSettings
 )
 from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QVariant, Qt
-from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtGui import QColor, QFont
 
 from ..core.constants import Constants
 from ..core.models import ReviewNote
@@ -58,7 +60,8 @@ class RenderService:
 
         return self._overlay_layer
 
-    def refresh_overlay(self, notes: List[ReviewNote]) -> None:
+    # 【修改点 1】：增加 show_labels 参数
+    def refresh_overlay(self, notes: List[ReviewNote], show_labels: bool = False) -> None:
         """刷新地图标注"""
         layer = self.ensure_overlay_layer()
         if not layer or not layer.isValid():
@@ -68,29 +71,55 @@ class RenderService:
         provider = layer.dataProvider()
         provider.truncate()
 
-        # 添加新要素
-        features = []
+        # 【修改点 2】：按要素(layer_id, feature_id)分组，处理多条注释重叠
+        grouped_notes = {}
         for note in notes:
             if not note.geometry_wkt:
                 continue
-            geom = QgsGeometry.fromWkt(note.geometry_wkt)
+            # 以图层和要素ID作为聚类主键
+            key = (note.layer_id, note.feature_id)
+            if key not in grouped_notes:
+                grouped_notes[key] = []
+            grouped_notes[key].append(note)
+
+        features = []
+        for key, note_group in grouped_notes.items():
+            geom = QgsGeometry.fromWkt(note_group[0].geometry_wkt)
             if geom.isEmpty():
                 continue
 
             feat = QgsFeature(layer.fields())
             feat.setGeometry(geom)
             feat.setAttribute("fid", len(features))
-            feat.setAttribute("note_fid", note.fid)
-            feat.setAttribute("status", note.status.value)
-            feat.setAttribute("priority", note.priority.value)
-            feat.setAttribute("note_text", note.note_text[:50] if note.note_text else "")
+            # 以第一条记录的 fid 作为代表
+            feat.setAttribute("note_fid", note_group[0].fid)
+
+            if len(note_group) == 1:
+                # 只有一条注释
+                feat.setAttribute("status", note_group[0].status.value)
+                feat.setAttribute("priority", note_group[0].priority.value)
+                feat.setAttribute("note_text", note_group[0].note_text[:50] if note_group[0].note_text else "")
+            else:
+                # 存在多条注释：拼接文本，优先级取最高以进行强警示
+                texts = [f"• {n.note_text[:30]}" for n in note_group if n.note_text]
+                feat.setAttribute("note_text", "\n".join(texts))
+
+                # 提取最高优先级数值
+                max_priority = max(n.priority.value for n in note_group)
+                feat.setAttribute("priority", max_priority)
+                # 状态取第一条的作为默认
+                feat.setAttribute("status", note_group[0].status.value)
+
             features.append(feat)
 
         if features:
             provider.addFeatures(features)
 
+        # 【修改点 3】：应用智能标注设置
+        self._apply_labeling(layer, show_labels)
+
         layer.triggerRepaint()
-        log_info(f"标注图层已刷新: {len(features)} 个标注")
+        log_info(f"标注图层已刷新: 聚合后共 {len(features)} 个标注点")
 
     def clear_overlay(self) -> None:
         """清除标注图层"""
@@ -151,3 +180,34 @@ class RenderService:
 
         renderer = QgsCategorizedSymbolRenderer("status", categories)
         layer.setRenderer(renderer)
+
+    # 【新增方法】：配置 QGIS 的智能 PAL 标注引擎
+    def _apply_labeling(self, layer: QgsVectorLayer, show_labels: bool) -> None:
+        """配置 QGIS 标注引擎以防重叠"""
+        if not show_labels:
+            layer.setLabelsEnabled(False)
+            return
+
+        settings = QgsPalLayerSettings()
+        settings.fieldName = "note_text"
+        settings.isExpression = False
+
+        # 1. 设置字体与白边（增加在复杂底图上的辨识度）
+        text_format = QgsTextFormat()
+        text_format.setFont(QFont("Microsoft YaHei", 9))
+        buffer = QgsTextBufferSettings()
+        buffer.setEnabled(True)
+        buffer.setSize(1.0)
+        buffer.setColor(QColor("white"))
+        text_format.setBuffer(buffer)
+        settings.setFormat(text_format)
+
+        # 2. 核心功能：设置避让与排版策略
+        # OrderedPositionsAroundPoint：让标签优先围绕点周围的 8 个方位自适应找空隙
+        settings.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
+        # 将点要素本身作为障碍物，防止文本压盖住中心圆点
+        settings.obstacleSettings().setIsObstacle(True)
+
+        labeling = QgsVectorLayerSimpleLabeling(settings)
+        layer.setLabeling(labeling)
+        layer.setLabelsEnabled(True)

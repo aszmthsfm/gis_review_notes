@@ -308,7 +308,9 @@ class ReviewController(QObject):
         self.dock.refresh_table(notes)
         stats = self.note_service.get_statistics()
         self.dock.update_statistics(stats)
-        self.render_service.refresh_overlay(notes)
+
+        show_labels = filters.get("show_labels", False)
+        self.render_service.refresh_overlay(notes, show_labels=show_labels)
 
     def _on_refresh(self):
         """手动刷新"""
@@ -320,13 +322,10 @@ class ReviewController(QObject):
     # ═══════════════════════════════════════
 
     def _refresh_all(self):
-        """刷新表格 + 统计 + 地图标注 + 图层下拉"""
         try:
-            # 更新图层下拉
             layer_names = self.note_service.get_layer_names_for_project()
             self.dock.update_layer_combo(layer_names)
 
-            # 按当前筛选条件加载
             filters = self.dock.get_current_filters()
             notes = self.note_service.search(
                 status=filters.get("status", "all"),
@@ -334,12 +333,12 @@ class ReviewController(QObject):
                 layer_name=filters.get("layer", ""),
             )
             self.dock.refresh_table(notes)
-
-            # 更新统计
             stats = self.note_service.get_statistics()
             self.dock.update_statistics(stats)
 
-            # 更新地图标注
-            self.render_service.refresh_overlay(notes)
+            # 从过滤条件中获取 show_labels，并传给图层刷新服务
+            show_labels = filters.get("show_labels", False)
+            self.render_service.refresh_overlay(notes, show_labels=show_labels)
         except Exception as e:
+            from ..utils.logger import log_error
             log_error(f"刷新失败: {e}")

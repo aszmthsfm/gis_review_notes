@@ -138,6 +138,8 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         self.comboBox_layer.currentIndexChanged.connect(self._emit_filter_changed)
         self.checkBox_selectedOnly.stateChanged.connect(self._emit_filter_changed)
+        if hasattr(self, 'checkBox_showLabels'):
+            self.checkBox_showLabels.stateChanged.connect(self._emit_filter_changed)
         self.pushButton_refresh.clicked.connect(lambda: self.refresh_requested.emit())
 
     def _apply_styles(self):
@@ -260,6 +262,7 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             "priorities": priorities,
             "layer": self.comboBox_layer.currentData() or "",
             "selected_only": self.checkBox_selectedOnly.isChecked(),
+            "show_labels": getattr(self, 'checkBox_showLabels',None) is not None and self.checkBox_showLabels.isChecked(),
         }
 
     def show_message(self, message: str, level: str = "info"):
