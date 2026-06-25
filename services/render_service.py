@@ -55,12 +55,12 @@ class RenderService:
             self._apply_symbology(self._overlay_layer)
 
             # 添加到项目（插入到最底层，不干扰数据图层）
-            project.addMapLayer(self._overlay_layer, False)
+            project.addMapLayer(self._overlay_layer, True)
             log_info("已创建标注覆盖图层")
 
         return self._overlay_layer
 
-    # 【修改点 1】：增加 show_labels 参数
+    # 增加 show_labels 参数
     def refresh_overlay(self, notes: List[ReviewNote], show_labels: bool = False) -> None:
         """刷新地图标注"""
         layer = self.ensure_overlay_layer()
@@ -71,7 +71,7 @@ class RenderService:
         provider = layer.dataProvider()
         provider.truncate()
 
-        # 【修改点 2】：按要素(layer_id, feature_id)分组，处理多条注释重叠
+        #按要素(layer_id, feature_id)分组，处理多条注释重叠
         grouped_notes = {}
         for note in notes:
             if not note.geometry_wkt:
@@ -115,11 +115,14 @@ class RenderService:
         if features:
             provider.addFeatures(features)
 
-        # 【修改点 3】：应用智能标注设置
+        # 应用智能标注设置
         self._apply_labeling(layer, show_labels)
 
         layer.triggerRepaint()
-        log_info(f"标注图层已刷新: 聚合后共 {len(features)} 个标注点")
+        # 主动触发主地图画布刷新，确保标签立刻上屏
+        if self._iface and self._iface.mapCanvas():
+            self._iface.mapCanvas().refresh()
+        log_info(f"标注图层已刷新: 聚合后共 {len(features)} 个标注点, 显示标签状态: {show_labels}")
 
     def clear_overlay(self) -> None:
         """清除标注图层"""
@@ -181,33 +184,50 @@ class RenderService:
         renderer = QgsCategorizedSymbolRenderer("status", categories)
         layer.setRenderer(renderer)
 
-    # 【新增方法】：配置 QGIS 的智能 PAL 标注引擎
     def _apply_labeling(self, layer: QgsVectorLayer, show_labels: bool) -> None:
-        """配置 QGIS 标注引擎以防重叠"""
+        """配置 QGIS 的智能 PAL 标注引擎（强制渲染版）"""
+        # 如果你没在顶部引入这些类，取消下面两行的注释：
+        # from qgis.core import QgsPalLayerSettings, QgsVectorLayerSimpleLabeling, QgsTextFormat, QgsTextBufferSettings
+        # from qgis.PyQt.QtGui import QColor, QFont
+
         if not show_labels:
             layer.setLabelsEnabled(False)
+            layer.emitStyleChanged()
             return
 
         settings = QgsPalLayerSettings()
-        settings.fieldName = "note_text"
-        settings.isExpression = False
 
-        # 1. 设置字体与白边（增加在复杂底图上的辨识度）
+        # 【修复点 1】：强制使用表达式引擎解析字段
+        settings.isExpression = True
+        # coalesce 确保即使该行没有文本，也会显示"[空批注]"，帮你一眼定位是否是数据本身没文本的问题
+        settings.fieldName = 'coalesce(NULLIF("note_text", \'\'), \'[空批注]\')'
+
+        # 字体和颜色设置
         text_format = QgsTextFormat()
-        text_format.setFont(QFont("Microsoft YaHei", 9))
+        text_format.setFont(QFont("Microsoft YaHei"))
+        text_format.setSize(10.0)
+        text_format.setColor(QColor(0, 0, 0))  # 纯黑色文字
+
+        # 白边缓冲，防止文字融进底图
         buffer = QgsTextBufferSettings()
         buffer.setEnabled(True)
         buffer.setSize(1.0)
-        buffer.setColor(QColor("white"))
+        buffer.setColor(QColor(255, 255, 255))
         text_format.setBuffer(buffer)
+
         settings.setFormat(text_format)
 
-        # 2. 核心功能：设置避让与排版策略
-        # OrderedPositionsAroundPoint：让标签优先围绕点周围的 8 个方位自适应找空隙
+        # 排版：在点位周围 8 个方向寻找合适位置
         settings.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
-        # 将点要素本身作为障碍物，防止文本压盖住中心圆点
-        settings.obstacleSettings().setIsObstacle(True)
+        settings.obstacleSettings().setIsObstacle(True)  # 把点位本身当成障碍物，不要让文字压在点上
+
+        # 【修复点 2：终极杀招】：关闭重叠隐藏机制！
+        # 强制 QGIS 把所有标签画出来（就算字和字叠在一起也要画），这是排错的核心。
+        settings.displayAll = True
 
         labeling = QgsVectorLayerSimpleLabeling(settings)
         layer.setLabeling(labeling)
         layer.setLabelsEnabled(True)
+
+        # 触发图层样式重绘
+        layer.emitStyleChanged()
