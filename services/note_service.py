@@ -88,6 +88,10 @@ class NoteService:
 
         fid = self._note_repo.insert(note)
         note.fid = fid
+
+        # ----记录创建历史 ----
+        self._note_repo.insert_history(fid, "新建", "创建了批注", author)
+
         log_info(f"新增批注 #{fid}: {layer.name()} F:{feature.id()}")
         return note
 
@@ -99,6 +103,15 @@ class NoteService:
         if not note:
             return None
 
+        # ---- 新增：对比变更内容 ----
+        changes = []
+        if note_text is not None and note_text != note.note_text:
+            changes.append("内容")
+        if priority is not None and priority != note.priority:
+            changes.append("优先级")
+        if tags is not None and tags != note.tags:
+            changes.append("标签")
+
         if note_text is not None:
             note.note_text = note_text
         if priority is not None:
@@ -109,13 +122,33 @@ class NoteService:
             note.author = author
 
         self._note_repo.update(note)
+
+        # ---- 写入历史 ----
+        if changes:
+            detail = "修改了: " + ", ".join(changes)
+            self._note_repo.insert_history(fid, "编辑", detail, author or note.author)
+
         return note
 
     def delete_note(self, fid: int) -> bool:
         return self._note_repo.delete(fid)
 
     def change_status(self, fid: int, status: ReviewStatus) -> bool:
-        return self._note_repo.update_status(fid, status)
+        # 获取原状态以作对比
+        note = self.get_note_by_id(fid)
+
+        success = self._note_repo.update_status(fid, status)
+
+        # 写入状态变更历史
+        if success and note and note.status != status:
+            from ..core.enums import STATUS_DISPLAY
+            old_str = STATUS_DISPLAY.get(note.status, str(note.status))
+            new_str = STATUS_DISPLAY.get(status, str(status))
+            self._note_repo.insert_history(
+                fid, "状态变更", f"由 [{old_str}] 变更为 [{new_str}]", note.author
+            )
+
+        return success
 
     def get_note_by_id(self, fid: int) -> Optional[ReviewNote]:
         return self._note_repo.get_by_id(fid)
@@ -163,3 +196,6 @@ class NoteService:
         if not self._current_project_hash:
             self.update_project_hash()
         return self._note_repo.get_layer_names(self._current_project_hash)
+
+    def get_note_history(self, fid: int) -> list:
+        return self._note_repo.get_history(fid)

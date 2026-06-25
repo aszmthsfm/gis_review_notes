@@ -163,6 +163,17 @@ class GpkgManager:
                 value TEXT
             )
         """)
+        # review_notes_history 表
+        conn.execute(f"""
+                    CREATE TABLE IF NOT EXISTS {Constants.TABLE_HISTORY} (
+                        {Constants.F_HIST_ID} INTEGER PRIMARY KEY AUTOINCREMENT,
+                        {Constants.F_HIST_NOTE_FID} INTEGER NOT NULL,
+                        {Constants.F_HIST_ACTION} TEXT NOT NULL,
+                        {Constants.F_HIST_DETAIL} TEXT DEFAULT '',
+                        {Constants.F_HIST_OPERATOR} TEXT DEFAULT '',
+                        {Constants.F_HIST_CREATED} TEXT NOT NULL DEFAULT (datetime('now'))
+                    )
+                """)
 
     def _create_indexes(self, conn: sqlite3.Connection) -> None:
         """创建索引"""
@@ -172,6 +183,7 @@ class GpkgManager:
             f"CREATE INDEX IF NOT EXISTS idx_notes_feature ON {Constants.TABLE_NOTES}({Constants.F_PROJECT_HASH}, {Constants.F_LAYER_ID}, {Constants.F_FEATURE_ID})",
             f"CREATE INDEX IF NOT EXISTS idx_notes_status ON {Constants.TABLE_NOTES}({Constants.F_PROJECT_HASH}, {Constants.F_STATUS})",
             f"CREATE INDEX IF NOT EXISTS idx_notes_priority ON {Constants.TABLE_NOTES}({Constants.F_PROJECT_HASH}, {Constants.F_PRIORITY})",
+            f"CREATE INDEX IF NOT EXISTS idx_history_note ON {Constants.TABLE_HISTORY}({Constants.F_HIST_NOTE_FID})",
         ]
         for sql in indexes:
             conn.execute(sql)

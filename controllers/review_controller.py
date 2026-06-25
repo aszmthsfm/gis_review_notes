@@ -284,8 +284,15 @@ class ReviewController(QObject):
         self.dock.show_message("已复制到剪贴板", "info")
 
     def _on_note_history(self, fid: int):
-        """查看历史（预留）"""
-        self.dock.show_message("历史功能开发中...", "info")
+        """查看历史"""
+        history = self.note_service.get_note_history(fid)
+        if not history:
+            self.dock.show_message("该批注暂无历史记录", "info")
+            return
+
+        from ..ui.history_dialog import HistoryDialog
+        dialog = HistoryDialog(note_fid=fid, history_data=history, parent=self.dock)
+        dialog.exec_()
 
     # ═══════════════════════════════════════
     #  筛选

@@ -231,3 +231,35 @@ class NoteRepository:
             ORDER BY {Constants.F_LAYER_ID}
         """, (project_hash,))
         return [row[0] for row in cursor.fetchall()]
+
+    def insert_history(self, note_fid: int, action: str, detail: str, operator: str) -> None:
+        """插入一条历史记录"""
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._conn.execute(f"""
+            INSERT INTO {Constants.TABLE_HISTORY} (
+                {Constants.F_HIST_NOTE_FID}, {Constants.F_HIST_ACTION},
+                {Constants.F_HIST_DETAIL}, {Constants.F_HIST_OPERATOR}, {Constants.F_HIST_CREATED}
+            ) VALUES (?, ?, ?, ?, ?)
+        """, (note_fid, action, detail, operator, now))
+        self._conn.commit()
+
+    def get_history(self, note_fid: int) -> list:
+        """获取某条批注的所有历史记录"""
+        cursor = self._conn.execute(f"""
+            SELECT {Constants.F_HIST_ID}, {Constants.F_HIST_NOTE_FID},
+                   {Constants.F_HIST_ACTION}, {Constants.F_HIST_DETAIL},
+                   {Constants.F_HIST_OPERATOR}, {Constants.F_HIST_CREATED}
+            FROM {Constants.TABLE_HISTORY}
+            WHERE {Constants.F_HIST_NOTE_FID} = ?
+            ORDER BY {Constants.F_HIST_CREATED} DESC
+        """, (note_fid,))
+
+        return [{
+            "id": row[0],
+            "note_fid": row[1],
+            "action": row[2],
+            "detail": row[3],
+            "operator": row[4],
+            "created_at": row[5]
+        } for row in cursor.fetchall()]

@@ -66,3 +66,16 @@ class Constants:
 
     OVERLAY_LAYER_NAME = "_gis_review_notes_overlay"
     OVERLAY_LAYER_TYPE = "Point"
+
+
+    # ═══════════════════════════════════════
+    #  历史记录表名与字段
+    # ═══════════════════════════════════════
+
+    TABLE_HISTORY = "review_notes_history"
+    F_HIST_ID = "id"
+    F_HIST_NOTE_FID = "note_fid"
+    F_HIST_ACTION = "action"
+    F_HIST_DETAIL = "detail"
+    F_HIST_OPERATOR = "operator"
+    F_HIST_CREATED = "created_at"
