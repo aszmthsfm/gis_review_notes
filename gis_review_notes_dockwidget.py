@@ -158,13 +158,16 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     def _on_delete_note(self):
         sel_model = self.tableView_notes.selectionModel()
         if sel_model and sel_model.hasSelection():
+            # 使用 selectedIndexes 获取所有选中单元格，再提取并去重得到实际选中行
+            selected_rows = set(index.row() for index in sel_model.selectedIndexes())
             fids = []
-            # 遍历所有选中的行
-            for index in sel_model.selectedRows():
-                fid = self._table_model.get_fid_at_row(index.row())
+
+            # 遍历所有选中的唯一行号
+            for row in selected_rows:
+                fid = self._table_model.get_fid_at_row(row)
                 if fid is not None:
                     fids.append(fid)
-            # 如果有选中的 ID，则发射列表信号
+            # 如果有选中的 ID，则发射列表信号交由 Controller 弹出确认框并删除
             if fids:
                 self.delete_note_requested.emit(fids)
 

@@ -9,7 +9,7 @@ from qgis.core import (
     QgsWkbTypes, QgsSymbol, QgsSingleSymbolRenderer,
     QgsCategorizedSymbolRenderer, QgsRendererCategory,
     QgsLineSymbol, QgsFillSymbol, QgsTextFormat,
-    QgsMapLayer
+    QgsMapLayer, QgsCoordinateTransform
 )
 from qgis.gui import QgisInterface
 from qgis.PyQt.QtCore import QVariant, Qt
@@ -40,17 +40,22 @@ class RenderService:
 
         # 创建新的内存图层
         uri = "Point?crs=EPSG:4326&field=fid:integer&field=note_fid:integer&field=status:string&field=priority:integer&field=note_text:string"
-        #设置图层为私有，并且免除内存图层保存提示
-        self._overlay_layer.setFlags(QgsMapLayer.Private | QgsMapLayer.Identifiable)
-        self._overlay_layer.setCustomProperty("skipMemorySave", 1)
 
-        # 设置样式
-        self._apply_symbology(self._overlay_layer)
+        # ⚠️ 修复: 原代码缺失了下面这行实例化代码，会导致图层创建失败并引发无法添加注释的连锁报错
+        self._overlay_layer = QgsVectorLayer(uri, Constants.OVERLAY_LAYER_NAME, "memory")
 
-        # 添加到项目（插入到最底层，不干扰数据图层）
-        project.addMapLayer(self._overlay_layer, False)
+        if self._overlay_layer.isValid():
+            # 设置图层为私有，并且免除内存图层保存提示
+            self._overlay_layer.setFlags(QgsMapLayer.Private | QgsMapLayer.Identifiable)
+            self._overlay_layer.setCustomProperty("skipMemorySave", 1)
 
-        log_info("已创建标注覆盖图层")
+            # 设置样式
+            self._apply_symbology(self._overlay_layer)
+
+            # 添加到项目（插入到最底层，不干扰数据图层）
+            project.addMapLayer(self._overlay_layer, False)
+            log_info("已创建标注覆盖图层")
+
         return self._overlay_layer
 
     def refresh_overlay(self, notes: List[ReviewNote]) -> None:
@@ -108,15 +113,27 @@ class RenderService:
             return
 
         canvas = self._iface.mapCanvas()
-        rect = geom.boundingBox()
-        # 适当放大范围
-        rect.scale(5)
-        canvas.setExtent(rect)
+
+        # 1. 坐标系转换：数据库固定为 EPSG:4326，需转为当前画布的坐标系
+        crs_src = QgsCoordinateReferenceSystem("EPSG:4326")
+        crs_dest = canvas.mapSettings().destinationCrs()
+
+        if crs_src != crs_dest:
+            transform = QgsCoordinateTransform(crs_src, crs_dest, QgsProject.instance())
+            geom.transform(transform)
+
+        # 2. 定位到点：因为点要素 BoundingBox 宽高为 0，不能用 setExtent
+        center_point = geom.asPoint()
+        canvas.setCenter(center_point)
+
+        # 3. 优化缩放体验
+        if canvas.scale() > 5000:
+            canvas.zoomScale(5000)
+
         canvas.refresh()
 
     def _apply_symbology(self, layer: QgsVectorLayer) -> None:
         """应用分类符号化：按状态分色"""
-        # 创建不同状态的符号
         categories = []
 
         status_configs = [
