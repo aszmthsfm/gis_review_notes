@@ -112,13 +112,7 @@ class GisReviewNotes:
             callback=self.run,
             parent=self.iface.mainWindow()
         )
-        #独立快捷按钮（对选中要素添加批注）
-        self.add_action(
-            icon_path,  # 若有其他单独设计的图标，可替换此处路径
-            text=self.tr(u'为选中要素添加批注'),
-            callback=self._add_note_to_selection,
-            parent=self.iface.mainWindow()
-        )
+
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""

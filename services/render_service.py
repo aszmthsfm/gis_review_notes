@@ -71,6 +71,13 @@ class RenderService:
         provider = layer.dataProvider()
         provider.truncate()
 
+        if not show_labels:
+            self._apply_labeling(layer, False)  # 彻底关闭标签引擎和样式缓存
+            layer.triggerRepaint()
+            if self._iface and self._iface.mapCanvas():
+                self._iface.mapCanvas().refresh()
+            return
+
         #按要素(layer_id, feature_id)分组，处理多条注释重叠
         grouped_notes = {}
         for note in notes:
