@@ -33,7 +33,7 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     #  信号定义 — 供 Controller 连接
     # ═══════════════════════════════════════════════════
     add_note_requested = pyqtSignal()
-    delete_note_requested = pyqtSignal(int)
+    delete_note_requested = pyqtSignal(list)
     locate_feature_requested = pyqtSignal(int)
     mark_resolved_requested = pyqtSignal(int)
     export_report_requested = pyqtSignal()
@@ -156,8 +156,17 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
     # ═══════════════════════════════════════════════════
 
     def _on_delete_note(self):
-        if self._current_fid is not None:
-            self.delete_note_requested.emit(self._current_fid)
+        sel_model = self.tableView_notes.selectionModel()
+        if sel_model and sel_model.hasSelection():
+            fids = []
+            # 遍历所有选中的行
+            for index in sel_model.selectedRows():
+                fid = self._table_model.get_fid_at_row(index.row())
+                if fid is not None:
+                    fids.append(fid)
+            # 如果有选中的 ID，则发射列表信号
+            if fids:
+                self.delete_note_requested.emit(fids)
 
     def _on_locate_feature(self):
         if self._current_fid is not None:

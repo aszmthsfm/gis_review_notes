@@ -141,25 +141,37 @@ class ReviewController(QObject):
             self.dock.show_message(f"已成功为 {added_count} 个要素添加批注", "success")
             self._refresh_all()
 
-    def _on_delete_note(self, fid: int):
-        """删除批注"""
-        note = self.note_service.get_note_by_id(fid)
-        if not note:
+    def _on_delete_note(self, fids: list):
+        """删除批注（支持单个和批量）"""
+        if not fids:
             return
-
+        # 根据选中的数量构建不同的提示信息
+        if len(fids) == 1:
+            fid = fids[0]
+            note = self.note_service.get_note_by_id(fid)
+            if not note:
+                return
+            msg = (
+                f"确定要删除批注 #{fid} 吗?\n\n"
+                f"图层: {note.layer_name}\n"
+                f"要素: {note.feature_id}\n"
+                f"意见: {note.note_text[:50]}..."
+            )
+        else:
+            msg = f"确定要删除选中的 {len(fids)} 个批注吗?"
+        # 弹出确认框
         reply = QMessageBox.question(
             self.dock,
             "确认删除",
-            f"确定要删除批注 #{fid} 吗?\n\n"
-            f"图层: {note.layer_name}\n"
-            f"要素: {note.feature_id}\n"
-            f"意见: {note.note_text[:50]}...",
+            msg,
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
+        # 用户确认后循环删除
         if reply == QMessageBox.Yes:
-            self.note_service.delete_note(fid)
-            self.dock.show_message(f"已删除批注 #{fid}", "success")
+            for fid in fids:
+                self.note_service.delete_note(fid)
+            self.dock.show_message(f"已成功删除 {len(fids)} 个批注", "success")
             self._refresh_all()
 
     def _on_locate_feature(self, fid: int):
