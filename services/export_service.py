@@ -5,8 +5,13 @@ import csv
 import json
 from typing import List
 
+# 修改点 1：引入 QgsGeometry 用于健壮的 WKT 解析
+from qgis.core import QgsGeometry
+
 from ..core.models import ReviewNote
 from ..core.enums import STATUS_DISPLAY, PRIORITY_DISPLAY
+# 修改点 2：引入标准日志工具
+from ..utils.logger import log_error
 
 
 class ExportService:
@@ -36,7 +41,8 @@ class ExportService:
                     ])
             return True
         except Exception as e:
-            print(f"导出 CSV 失败: {e}")
+            # 修改点 3：使用标准错误日志记录
+            log_error(f"导出 CSV 失败: {e}")
             return False
 
     def export_to_geojson(self, notes: List[ReviewNote], file_path: str) -> bool:
@@ -46,15 +52,11 @@ class ExportService:
             for note in notes:
                 geom = None
                 if note.geometry_wkt:
-                    # 简单解析 POINT(x y)
-                    wkt = note.geometry_wkt
-                    if wkt.startswith("POINT("):
-                        coords = wkt[6:-1].strip().split()
-                        if len(coords) >= 2:
-                            geom = {
-                                "type": "Point",
-                                "coordinates": [float(coords[0]), float(coords[1])]
-                            }
+                    # 修改点 4：使用 QgsGeometry 替代脆弱的字符串切片
+                    qgs_geom = QgsGeometry.fromWkt(note.geometry_wkt)
+                    if not qgs_geom.isEmpty():
+                        # asJson() 返回的已经是 json 格式的字符串，需转为字典以嵌入 GeoJSON
+                        geom = json.loads(qgs_geom.asJson())
 
                 features.append({
                     "type": "Feature",
@@ -78,5 +80,6 @@ class ExportService:
                 json.dump(geojson, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            print(f"导出 GeoJSON 失败: {e}")
+            # 修改点 5：使用标准错误日志记录
+            log_error(f"导出 GeoJSON 失败: {e}")
             return False

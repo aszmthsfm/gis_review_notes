@@ -76,7 +76,14 @@ class NoteRepository:
         return cursor.rowcount > 0
 
     def delete(self, fid: int) -> bool:
-        """删除一条批注"""
+        """删除一条批注及其相关历史记录"""
+        # 修改点：先删除对应的历史记录，防止产生“孤儿”数据
+        self._conn.execute(
+            f"DELETE FROM {Constants.TABLE_HISTORY} WHERE {Constants.F_HIST_NOTE_FID} = ?",
+            (fid,)
+        )
+
+        # 再删除主表批注
         cursor = self._conn.execute(
             f"DELETE FROM {Constants.TABLE_NOTES} WHERE {Constants.F_FID} = ?",
             (fid,)

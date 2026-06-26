@@ -50,6 +50,7 @@ class GisReviewNotes:
             gpkg_path = str(user_data_dir / "gis_review_notes.gpkg")
             self.config_service.set_gpkg_path(gpkg_path)
 
+        os.makedirs(os.path.dirname(gpkg_path), exist_ok=True)
         # 初始化GPKG管理器并确保数据库存在
         self.gpkg_manager = GpkgManager(gpkg_path)
         self.gpkg_manager.init_or_migrate()
@@ -106,18 +107,25 @@ class GisReviewNotes:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
         icon_path = ':/plugins/gis_review_notes/icon.png'
-        self.add_action(
+
+        self.action = self.add_action(
             icon_path,
             text=self.tr(u'GIS Review Notes'),
             callback=self.run,
-            parent=self.iface.mainWindow()
+            parent=self.iface.mainWindow(),
+            add_to_toolbar=False
         )
+
+        self.iface.addToolBarIcon(self.action)
 
 
     def onClosePlugin(self):
         """Cleanup necessary items here when plugin dockwidget is closed"""
         if self.dockwidget:
             self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+        # 用户关闭右侧面板时，同步清理地图上的高亮内存图层
+        if hasattr(self, 'review_controller') and self.review_controller:
+            self.review_controller.render_service.clear_overlay()
         self.pluginIsActive = False
 
     def unload(self):
@@ -152,7 +160,7 @@ class GisReviewNotes:
             self.review_controller.initialize()
 
             # 启用地图工具
-            #self.map_controller.enable_identify_tool()
+            self.map_controller.enable_identify_tool()
 
     def _add_note_to_selection(self):
         """主工具栏独立按钮的回调函数"""
