@@ -6,7 +6,7 @@ from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 from qgis.core import QgsProject, QgsMessageLog, Qgis,QgsApplication
-
+from . import resources
 
 import os.path
 from pathlib import Path
@@ -113,7 +113,7 @@ class GisReviewNotes:
             text=self.tr(u'GIS Review Notes'),
             callback=self.run,
             parent=self.iface.mainWindow(),
-            add_to_toolbar=False
+            add_to_toolbar=True
         )
 
         self.iface.addToolBarIcon(self.action)
