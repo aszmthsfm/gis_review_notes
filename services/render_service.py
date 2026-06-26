@@ -41,7 +41,11 @@ class RenderService:
                 return layer
 
         # 创建新的内存图层
-        uri = "Point?crs=EPSG:4326&field=fid:integer&field=note_fid:integer&field=status:string&field=priority:integer&field=note_text:string"
+        uri = (
+            "Point?crs=EPSG:4326&field=fid:integer&field=note_fid:integer"
+            "&field=status:string&field=priority:integer&field=note_text:string"
+            "&field=author:string&field=tags:string"
+        )
 
         # ⚠️ 修复: 原代码缺失了下面这行实例化代码，会导致图层创建失败并引发无法添加注释的连锁报错
         self._overlay_layer = QgsVectorLayer(uri, Constants.OVERLAY_LAYER_NAME, "memory")
@@ -106,6 +110,8 @@ class RenderService:
                 feat.setAttribute("status", note_group[0].status.value)
                 feat.setAttribute("priority", note_group[0].priority.value)
                 feat.setAttribute("note_text", note_group[0].note_text[:50] if note_group[0].note_text else "")
+                feat.setAttribute("author", note_group[0].author)
+                feat.setAttribute("tags", note_group[0].tags)
             else:
                 # 存在多条注释：拼接文本，优先级取最高以进行强警示
                 texts = [f"• {n.note_text[:30]}" for n in note_group if n.note_text]
@@ -204,10 +210,16 @@ class RenderService:
 
         settings = QgsPalLayerSettings()
 
-        # 【修复点 1】：强制使用表达式引擎解析字段
+        #强制使用表达式引擎解析字段
         settings.isExpression = True
         # coalesce 确保即使该行没有文本，也会显示"[空批注]"，帮你一眼定位是否是数据本身没文本的问题
-        settings.fieldName = 'coalesce(NULLIF("note_text", \'\'), \'[空批注]\')'
+        settings.fieldName = """
+                    concat(
+                        if("author" is not null and "author" != '', "author" || ' ', ''),
+                        if("tags" is not null and "tags" != '', '[' || "tags" || ']\n', ''),
+                        coalesce(NULLIF("note_text", ''), '[空批注]')
+                    )
+                """
 
         # 字体和颜色设置
         text_format = QgsTextFormat()
