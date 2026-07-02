@@ -21,7 +21,7 @@ from ..core.constants import Constants
 from ..core.models import ReviewNote
 from ..core.enums import ReviewStatus
 from ..utils.logger import log_info, log_error
-
+from ..utils.geo_utils import feature_to_centroid_wkt
 
 class RenderService:
     """在地图上渲染审查标注（内存图层）"""
@@ -60,76 +60,95 @@ class RenderService:
 
         return self._overlay_layer
 
-    # 增加 show_labels 参数
+        # 增加 show_labels 参数
     def refresh_overlay(self, notes: List[ReviewNote], show_labels: bool = False) -> None:
-        """刷新地图标注"""
-        layer = self.ensure_overlay_layer()
-        if not layer or not layer.isValid():
-            return
+            """刷新地图标注"""
+            layer = self.ensure_overlay_layer()
+            if not layer or not layer.isValid():
+                return
 
-        # 清空旧要素
-        provider = layer.dataProvider()
-        provider.truncate()
+            # 清空旧要素
+            provider = layer.dataProvider()
+            provider.truncate()
 
-        if not show_labels:
-            self._apply_labeling(layer, False)  # 彻底关闭标签引擎和样式缓存
+            if not show_labels:
+                self._apply_labeling(layer, False)  # 彻底关闭标签引擎和样式缓存
+                layer.triggerRepaint()
+                if self._iface and self._iface.mapCanvas():
+                    self._iface.mapCanvas().refresh()
+                return
+
+            # 按要素(layer_id, feature_id)分组，处理多条注释重叠
+            grouped_notes = {}
+            for note in notes:
+                if not note.geometry_wkt:
+                    continue
+                # 以图层和要素ID作为聚类主键
+                key = (note.layer_id, note.feature_id)
+                if key not in grouped_notes:
+                    grouped_notes[key] = []
+                grouped_notes[key].append(note)
+
+            features = []
+            for key, note_group in grouped_notes.items():
+                layer_id = key[0]
+                feature_id = key[1]
+                geom = None
+
+                # 1. 优先尝试动态获取原图层中要素的最新位置（支持要素被移动、图层被重投影等情况）
+                qgs_layer = QgsProject.instance().mapLayer(layer_id)
+                if qgs_layer and isinstance(qgs_layer, QgsVectorLayer):
+                    feat = qgs_layer.getFeature(feature_id)
+                    if feat.isValid():
+                        try:
+                            current_wkt = feature_to_centroid_wkt(feat, qgs_layer.crs())
+                            if current_wkt:
+                                geom = QgsGeometry.fromWkt(current_wkt)
+                        except Exception as e:
+                            log_error(f"动态获取要素最新位置失败: {e}")
+
+                # 2. 如果图层被移除或要素被删除，则降级使用数据库中记录的历史静态位置
+                if not geom or geom.isEmpty():
+                    geom = QgsGeometry.fromWkt(note_group[0].geometry_wkt)
+
+                if not geom or geom.isEmpty():
+                    continue
+
+                feat = QgsFeature(layer.fields())
+                feat.setGeometry(geom)
+                feat.setAttribute("fid", len(features))
+                # 以第一条记录的 fid 作为代表
+                feat.setAttribute("note_fid", note_group[0].fid)
+
+                if len(note_group) == 1:
+                    # 只有一条注释
+                    feat.setAttribute("status", note_group[0].status.value)
+                    feat.setAttribute("priority", note_group[0].priority.value)
+                    feat.setAttribute("note_text", note_group[0].note_text[:50] if note_group[0].note_text else "")
+                else:
+                    # 存在多条注释：拼接文本，优先级取最高以进行强警示
+                    texts = [f"• {n.note_text[:30]}" for n in note_group if n.note_text]
+                    feat.setAttribute("note_text", "\n".join(texts))
+
+                    # 提取最高优先级数值
+                    max_priority = max(n.priority.value for n in note_group)
+                    feat.setAttribute("priority", max_priority)
+                    # 状态取第一条的作为默认
+                    feat.setAttribute("status", note_group[0].status.value)
+
+                features.append(feat)
+
+            if features:
+                provider.addFeatures(features)
+
+            # 应用智能标注设置
+            self._apply_labeling(layer, show_labels)
+
             layer.triggerRepaint()
+            # 主动触发主地图画布刷新，确保标签立刻上屏
             if self._iface and self._iface.mapCanvas():
                 self._iface.mapCanvas().refresh()
-            return
-
-        #按要素(layer_id, feature_id)分组，处理多条注释重叠
-        grouped_notes = {}
-        for note in notes:
-            if not note.geometry_wkt:
-                continue
-            # 以图层和要素ID作为聚类主键
-            key = (note.layer_id, note.feature_id)
-            if key not in grouped_notes:
-                grouped_notes[key] = []
-            grouped_notes[key].append(note)
-
-        features = []
-        for key, note_group in grouped_notes.items():
-            geom = QgsGeometry.fromWkt(note_group[0].geometry_wkt)
-            if geom.isEmpty():
-                continue
-
-            feat = QgsFeature(layer.fields())
-            feat.setGeometry(geom)
-            feat.setAttribute("fid", len(features))
-            # 以第一条记录的 fid 作为代表
-            feat.setAttribute("note_fid", note_group[0].fid)
-
-            if len(note_group) == 1:
-                # 只有一条注释
-                feat.setAttribute("status", note_group[0].status.value)
-                feat.setAttribute("priority", note_group[0].priority.value)
-                feat.setAttribute("note_text", note_group[0].note_text[:50] if note_group[0].note_text else "")
-            else:
-                # 存在多条注释：拼接文本，优先级取最高以进行强警示
-                texts = [f"• {n.note_text[:30]}" for n in note_group if n.note_text]
-                feat.setAttribute("note_text", "\n".join(texts))
-
-                # 提取最高优先级数值
-                max_priority = max(n.priority.value for n in note_group)
-                feat.setAttribute("priority", max_priority)
-                # 状态取第一条的作为默认
-                feat.setAttribute("status", note_group[0].status.value)
-
-            features.append(feat)
-
-        if features:
-            provider.addFeatures(features)
-
-        # 应用智能标注设置
-        self._apply_labeling(layer, show_labels)
-
-        layer.triggerRepaint()
-        # 主动触发主地图画布刷新，确保标签立刻上屏
-        if self._iface and self._iface.mapCanvas():
-            self._iface.mapCanvas().refresh()
-        log_info(f"标注图层已刷新: 聚合后共 {len(features)} 个标注点, 显示标签状态: {show_labels}")
+            log_info(f"标注图层已刷新: 聚合后共 {len(features)} 个标注点, 显示标签状态: {show_labels}")
 
     def clear_overlay(self) -> None:
         """清除标注图层"""
@@ -144,11 +163,27 @@ class RenderService:
 
     def zoom_to_note(self, note: ReviewNote) -> None:
         """缩放到指定批注的位置"""
-        if not note.geometry_wkt:
-            return
+        geom = None
 
-        geom = QgsGeometry.fromWkt(note.geometry_wkt)
-        if geom.isEmpty():
+        # 1. 优先尝试动态获取要素的最新位置
+        qgs_layer = QgsProject.instance().mapLayer(note.layer_id)
+        if qgs_layer and isinstance(qgs_layer, QgsVectorLayer):
+            feat = qgs_layer.getFeature(note.feature_id)
+            if feat.isValid():
+                try:
+                    current_wkt = feature_to_centroid_wkt(feat, qgs_layer.crs())
+                    if current_wkt:
+                        geom = QgsGeometry.fromWkt(current_wkt)
+                except Exception as e:
+                    log_error(f"定位时动态获取要素位置失败: {e}")
+
+        # 2. 回退使用数据库静态坐标
+        if not geom or geom.isEmpty():
+            if not note.geometry_wkt:
+                return
+            geom = QgsGeometry.fromWkt(note.geometry_wkt)
+
+        if not geom or geom.isEmpty():
             return
 
         canvas = self._iface.mapCanvas()
@@ -170,7 +205,6 @@ class RenderService:
             canvas.zoomScale(5000)
 
         canvas.refresh()
-
     def _apply_symbology(self, layer: QgsVectorLayer) -> None:
         """应用分类符号化：按状态分色"""
         categories = []
