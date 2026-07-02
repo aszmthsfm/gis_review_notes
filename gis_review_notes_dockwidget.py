@@ -236,10 +236,21 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
     def update_layer_combo(self, layer_names: list):
         self.comboBox_layer.blockSignals(True)
+
+        # 修复：在清空列表前，记住当前选中的图层名称
+        current_text = self.comboBox_layer.currentText()
+
         self.comboBox_layer.clear()
         self.comboBox_layer.addItem("全部图层", "")
         for name in layer_names:
             self.comboBox_layer.addItem(name, name)
+
+        # 修复：重新填充后，查找并恢复之前的选中状态
+        if current_text:
+            idx = self.comboBox_layer.findText(current_text)
+            if idx >= 0:
+                self.comboBox_layer.setCurrentIndex(idx)
+
         self.comboBox_layer.blockSignals(False)
 
     def get_current_filters(self) -> dict:
@@ -257,10 +268,13 @@ class GisReviewNotesDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         if self.toolButton_priMedium.isChecked(): priorities.append(2)  # MEDIUM
         if self.toolButton_priLow.isChecked(): priorities.append(1)  # LOW
 
+        current_layer_text = self.comboBox_layer.currentText()
+        layer_filter = current_layer_text if current_layer_text != "全部图层" else ""
+
         return {
             "status": status,
             "priorities": priorities,
-            "layer": self.comboBox_layer.currentData() or "",
+            "layer": layer_filter,
             "selected_only": self.checkBox_selectedOnly.isChecked(),
             "show_labels": getattr(self, 'checkBox_showLabels',None) is not None and self.checkBox_showLabels.isChecked(),
         }
